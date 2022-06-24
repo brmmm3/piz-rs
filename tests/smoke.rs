@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 use std::process::Command;
+use core::result::Result::Ok;
 
 use anyhow::*;
 use log::*;
@@ -81,7 +82,7 @@ fn read_zip(zip_path: &str) -> Result<()> {
             tree.lookup("zip64/zero4400")?;
             tree.lookup("zip64/zero5000")?;
         }
-        wut => unreachable!(wut),
+        wut => unreachable!("{}", wut),
     };
 
     // Try reading out each file in the archive.

@@ -490,6 +490,14 @@ impl<'a> FileMetadata<'a> {
 
         let compression_method = CompressionMethod::from_u16(cde.compression_method);
 
+        // https://unix.stackexchange.com/questions/14705/the-zip-formats-external-file-attribute
+        // There's a _lot_ to unpack here - see unzip's zipinfo.c.
+        let unix_mode = match System::from_source_version(cde.source_version) {
+            // I know this!
+            System::Unix => Some((cde.external_file_attributes >> 16) as u16),
+            _ => None,
+        };
+
         let mut metadata = Self {
             size: usize(cde.uncompressed_size)?,
             compressed_size: usize(cde.compressed_size)?,
@@ -498,6 +506,7 @@ impl<'a> FileMetadata<'a> {
             encrypted,
             path,
             last_modified: parse_msdos(cde.last_modified_time, cde.last_modified_date),
+            unix_mode,
             header_offset: usize(cde.header_offset)?,
         };
 
@@ -510,10 +519,11 @@ impl<'a> FileMetadata<'a> {
     ///
     /// Since the local header doesn't contain the offset
     /// (we're at it already if we're reading the thing),
-    /// take the CDE-provided offset as an argument.
+    /// take the CDE-provided offset.
+    /// Ditto for other things the local header lacks (file perms, etc.)
     pub(crate) fn from_local_header(
         local: &LocalFileHeader<'a>,
-        header_offset: usize,
+        cde_header: &Self,
     ) -> ZipResult<Self> {
         let is_utf8 = is_utf8(local.flags);
 
@@ -541,7 +551,7 @@ impl<'a> FileMetadata<'a> {
             encrypted,
             path,
             last_modified: parse_msdos(local.last_modified_time, local.last_modified_date),
-            header_offset,
+            ..*cde_header
         };
 
         parse_extra_field(&mut metadata, local.extra_field)?;

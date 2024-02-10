@@ -4,7 +4,7 @@ use std::path::Path;
 use std::process::Command;
 use core::result::Result::Ok;
 
-use anyhow::*;
+use anyhow::{Context, Result};
 use log::*;
 use memmap::Mmap;
 use rayon::prelude::*;

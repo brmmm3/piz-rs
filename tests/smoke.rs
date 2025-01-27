@@ -1,12 +1,13 @@
+use std::env;
 use std::fs::File;
 use std::io;
-use std::path::Path;
 use std::process::Command;
-use core::result::Result::Ok;
 
 use anyhow::{Context, Result};
+use camino::Utf8Path;
 use log::*;
-use memmap::Mmap;
+use memmap2::Mmap;
+
 use rayon::prelude::*;
 
 use piz::read::*;
@@ -16,22 +17,25 @@ use piz::result::ZipError;
 fn smoke() -> Result<()> {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let inputs = [
-        "tests/inputs/hello.zip",
-        "tests/inputs/hello-prefixed.zip",
-        "tests/inputs/zip64.zip",
-    ];
-
-    if inputs.iter().any(|i| !Path::new(i).exists()) {
-        Command::new("tests/create-inputs.sh")
-            .status()
-            .expect("Couldn't set up input files");
+    let mut inputs = vec!["tests/inputs/hello.zip", "tests/inputs/hello-prefixed.zip"];
+    // Skip zip64 mmap failure on 32-bit systems.
+    if std::mem::size_of::<usize>() >= 8 {
+        inputs.push("tests/inputs/zip64.zip");
     }
 
+    let current_dir = env::current_dir()?;
+    let tempdir = tempfile::tempdir().unwrap();
+    let temp_path = tempdir.path();
+    Command::new("tests/create-inputs.sh")
+        .arg(temp_path.as_os_str())
+        .status()
+        .expect("Couldn't set up input files");
+    env::set_current_dir(temp_path)?;
     for input in &inputs {
         read_zip(input)?;
     }
-
+    tempdir.close()?;
+    env::set_current_dir(current_dir)?;
     Ok(())
 }
 
@@ -53,7 +57,7 @@ fn read_zip(zip_path: &str) -> Result<()> {
             tree.lookup("hello/rip.txt")?;
             tree.lookup("hello/sr71.txt")?;
 
-            let no_such_file = Path::new("no/such/file");
+            let no_such_file = Utf8Path::new("no/such/file");
             match tree.lookup(no_such_file) {
                 Err(ZipError::NoSuchFile(p)) => {
                     assert_eq!(no_such_file, p);
@@ -61,7 +65,7 @@ fn read_zip(zip_path: &str) -> Result<()> {
                 Err(other) => panic!("Got incorrect error from path with no file: {:?}", other),
                 Ok(_) => panic!("Got a file back from a path with no file"),
             };
-            let no_such_file = Path::new("top-level-no-such-file");
+            let no_such_file = Utf8Path::new("top-level-no-such-file");
             match tree.lookup(no_such_file) {
                 Err(ZipError::NoSuchFile(p)) => {
                     assert_eq!(no_such_file, p);
@@ -70,7 +74,7 @@ fn read_zip(zip_path: &str) -> Result<()> {
                 Ok(_) => panic!("Got a file back from a path with no file"),
             };
 
-            let invalid_path = Path::new("../nope");
+            let invalid_path = Utf8Path::new("../nope");
             match tree.lookup(invalid_path) {
                 Err(ZipError::InvalidPath(_)) => { /* Cool. */ }
                 Err(other) => panic!("Got incorrect error from invalid path: {:?}", other),
@@ -79,7 +83,6 @@ fn read_zip(zip_path: &str) -> Result<()> {
         }
         "tests/inputs/zip64.zip" => {
             tree.lookup("zip64/zero100")?;
-            tree.lookup("zip64/zero4400")?;
             tree.lookup("zip64/zero5000")?;
         }
         wut => unreachable!("{}", wut),

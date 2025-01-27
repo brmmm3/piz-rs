@@ -1,8 +1,8 @@
 [package]
 name = "piz"
-version = "0.4.3"
+version = "0.5.2"
 edition = "2021"
-authors = ["Martin Bammer <mrbm74@gmail.com>", "Matt Kline <matt@bitbashing.io>"]
+authors = ["Matt Kline <matt@bitbashing.io>", "Martin Bammer <mrbm74@gmail.com>"]
 license = "Zlib"
 repository = "https://github.com/mrkline/piz-rs"
 readme = "README.md"
@@ -15,14 +15,19 @@ using a simple API.
 keywords = ["zip", "archive", "parallel", "thread", "concurrency"]
 categories = ["compression", "concurrency"]
 
+#Profiling!
+[profile.release]
+debug = true
+
 [dependencies]
+camino = "1.1"
 codepage-437 = "0.1"
 crc32fast = "1.4"
 flate2 = { version = "1.0", features = [
     "zlib-ng-compat",
 ], default-features = false }
 log = "0.4"
-thiserror = "1.0"
+thiserror = "2.0"
 memchr = "2.7"
 chrono = "0.4"
 
@@ -30,9 +35,10 @@ chrono = "0.4"
 anyhow = "1.0"
 env_logger = "0.11"
 rayon = "1.10"
-memmap = "0.7"
+memmap2 = "0.9"
 stderrlog = "0.6"
 structopt = "0.3"
+tempfile = "3"
 
 [features]
 default = ["check-local-metadata"]

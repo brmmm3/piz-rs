@@ -13,11 +13,8 @@
 //! ```no_run
 //! # use std::fs::{self, File};
 //! # use std::io;
-//! # extern crate anyhow;
-//! # extern crate rayon;
 //! # use rayon::prelude::*;
-//! # extern crate memmap;
-//! # use memmap::Mmap;
+//! # use memmap2::Mmap;
 //! # use piz::*;
 //! # use piz::read::*;
 //! #
@@ -41,7 +38,7 @@
 //! let metadata = tree.lookup("some/specific/file")?;
 //! // And read the file out, if we'd like:
 //! let mut reader = archive.read(metadata)?;
-//! let mut save_to = File::create(&metadata.path)?;
+//! let mut save_to = File::create(&*metadata.path)?;
 //! io::copy(&mut reader, &mut save_to)?;
 //!
 //! // Readers are `Send`, so we can read out as many as we'd like in parallel.
@@ -54,7 +51,7 @@
 //!             fs::create_dir_all(parent)?;
 //!         }
 //!         let mut reader = archive.read(entry)?;
-//!         let mut save_to = File::create(&entry.path)?;
+//!         let mut save_to = File::create(&*entry.path)?;
 //!         io::copy(&mut reader, &mut save_to)?;
 //!         # return Ok::<(), anyhow::Error>(());
 //!         Ok(())
